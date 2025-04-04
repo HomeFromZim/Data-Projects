@@ -1,30 +1,782 @@
 ---
-title: "Bella Project"
+title: "R Capstone Project 2"
 author: "Geoff Saunders"
-date: "`r Sys.Date()`"
-output: html_document
+date: "2025-03-27"
+output: 
+  github_document: 
+    theme: simplex
+    toc: true
+    number_sections: true
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+------------------------------------------------------------------------
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# Project Description
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+This project is the second project as the capstone to the Google Data
+Analytics course. It concerns an analysis of the usage data of women
+using wearable devices. Using an existing dataset, the task is to
+analyse the data to discover how women are using the wearable device
+studied and then make recommendations on a marketing strategy for
+Bellabeat, a fictional company that manufactures wearable devices for
+women.
 
-```{r cars}
-summary(cars)
+**The Task**
+
+Principally, there are two tasks:
+
+1.  Analyse the data set to discover women’s patterns of use of fitness
+    trackers
+
+2.  From the analysis, make recommendations on marketing the company’s
+    device(s).
+
+**The Data**
+
+The data used for the analysis is a Kaggle dataset containing fitness
+tracker data from a number of users. The description of the data says
+there are thirty Fitbit users but the data itself identifies 35 users.
+The sample size is very small so any conclusions derived from it should
+be taken with caution. Nonetheless, it does provide the sort of
+challenges that any data analysis may involve. The data is available at
+[FitBit Fitness Tracker Data
+(kaggle.com)](https://www.kaggle.com/datasets/arashnic/fitbit).
+
+**Reliability**
+
+The data is from reliable source and has been cited in the Google Data
+Analytics course but the very small sample size and age of the data make
+it useful as an exercise but the validity of any conclusions reached is
+not certain.
+
+# Initiallise The Project
+
+## Set-Up the Working Directories and Mirror
+
+```{r directories}
+# Set up the working directory and mirror for this project
+# repos = "https://cran.mirror.ac.za/"
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r packages, eval = FALSE, message = FALSE}
+install.packages("tidyverse")
+install.packages("janitor")
+install.packages("dplyr")
+install.packages("gt") #Table creation package
+install.packages("rmarkdown")
+install.packages("ggplot2")
+install.packages("hms")
+install.packages("knitr")
+install.packages("lubridate")
+install.packages("tidyr")
+install.packages("xfun")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Load Necessary Packages
+
+```{r load packages, message = FALSE, warning = FALSE}
+## Load packages
+library (tidyverse)
+library(janitor)
+library(dplyr)
+library(gt)  #Table creation package
+library(lubridate)
+library(ggplot2)
+library(hms)
+library(tidyr)
+```
+# Import and Clean the Data
+
+Import and get to know what is in the files Input the files, merge the
+two months files for each aspect, Clean the column names for each file
+Briefly inspect using str then remove the individual files
+
+**Daily Activity File**
+
+```{r Daily Activities data, message = FALSE}
+# Daily Activities File
+# Read the two csv files into dataframes
+daily_activity_merged <- read.csv("data/dailyActivity_merged.csv")
+daily_activity_merged_2 <- read.csv("data/dailyActivity_merged2.csv")
+
+# Combine the two dataframes and add a totals column for the total activity time
+daily_activity <-rbind(daily_activity_merged_2,   daily_activity_merged) |> 
+  clean_names() |>  # standardise the column names to snake case
+# Produce a total number of minutes of the different levels of activity
+  mutate(total_minutes = very_active_minutes + fairly_active_minutes + lightly_active_minutes + sedentary_minutes)
+print.noquote("Daily Activity File")  # Use this as a header for the output
+# Output the structure of the dataframe
+str(daily_activity)
+
+# Write the Wrangled data to a csv file for future use
+write.csv (daily_activity, "Daily_Activity.csv") 
+
+# Output a summary of the data for inspection
+summary(daily_activity$total_minutes)
+```
+Daily Activity has 1397 rows including *date*, steps, calories and types of activity
+
+I tried using print.noquote to provide a heading for the output but it did not enhance
+the output.
+
+The process of reading the csv files for each measure, tidying the column names and combining the two files provided is repeated for each pair of files and summaries are used to get a feel for the data
+
+**Calories Files**
+
+```{r Daily Calories File}
+
+# Daily Calories file 
+daily_calories<- read.csv("data/dailyCalories_merged2.csv") |> 
+  clean_names()
+
+str(daily_calories)
+write.csv(daily_calories, "Daily_Calories.csv")
+# Hourly Calories file
+hourly_calories_merged <- read.csv("data/hourlyCalories_merged.csv")
+hourly_calories_merged_2 <- read.csv("data/hourlyCalories_merged2.csv")
+
+hourly_calories<- rbind(hourly_calories_merged_2,hourly_calories_merged) |> 
+  clean_names()
+
+str(hourly_calories)
+# Remove redundant dataframes to reduce memory used
+remove(hourly_calories_merged_2,hourly_calories_merged)
+write.csv(hourly_calories, "Hourly_Calories.csv")
+
+# Now the Minute Calories Narrow Files
+minute_calories_narrow_merged <- read.csv("data/minuteCaloriesNarrow_merged.csv")
+minute_calories_narrow_merged_2 <- read.csv("data/minuteCaloriesNarrow_merged2.csv")
+minute_calories_narrow <- rbind(minute_calories_narrow_merged_2, minute_calories_narrow_merged) |> 
+  clean_names()
+str(minute_calories_narrow)
+
+# Now the Minute Calories Wide File
+minute_calories_wide <- read.csv("data/minuteCaloriesWide_merged2.csv")|> 
+  clean_names()
+
+slice_head(minute_calories_wide,n=5)
+
+write.csv(minute_calories_wide, "Minute_Calories_Wide.csv")
+  
+```
+**Intensities Data**
+
+```{r Intensities File}
+daily_intensities<- read.csv("data/dailyIntensities_merged2.csv") |> 
+  clean_names()
+slice_head(daily_intensities,n=8)
+
+write.csv( daily_intensities, "Daily_Intensities.csv")
+
+# Hourly Intensities File
+hourly_intensities_merged <- read.csv("data/hourlyIntensities_merged.csv")
+hourly_intensities_merged_2 <- read.csv("data/hourlyIntensities_merged2.csv")
+hourly_intensities <- rbind(hourly_intensities_merged_2, hourly_intensities_merged) |> 
+  clean_names()
+str(hourly_intensities)
+remove(hourly_intensities_merged_2, hourly_intensities_merged)
+write.csv(hourly_intensities, "Hourly_Intensities.csv")
+
+minute_intensities_narrow_merged <- read.csv("data/minuteIntensitiesNarrow_merged.csv")
+minute_intensities_narrow_merged_2 <- read.csv("data/minuteIntensitiesNarrow_merged2.csv")
+
+minute_itensities_narrow <- rbind(minute_intensities_narrow_merged_2,minute_intensities_narrow_merged) |> 
+  clean_names ()
+
+# Use slice to get a picture of the data
+slice_head(minute_itensities_narrow, n=6)
+
+remove(minute_intensities_narrow_merged_2, minute_intensities_narrow_merged)
+write.csv(minute_itensities_narrow, "Minute_Intensities_Narrow.csv")
+
+minute_intensities_wide <- read.csv("data/minuteIntensitiesWide_merged2.csv") |> 
+  clean_names() 
+slice_head(minute_intensities_wide,n=6)
+write.csv(minute_intensities_wide, "minute_intensities_wide.csv") 
+  
+```
+
+**Steps Data**
+
+```{r Steps Files}
+daily_steps<- read.csv("data/dailySteps_merged2.csv") |>   clean_names() 
+str(daily_steps)
+write.csv(daily_steps, "Daily_Steps.csv")
+# Hourly Steps File
+hourly_steps_merged <- read.csv("data/hourlySteps_merged.csv")
+hourly_steps_merged_2 <- read.csv("data/hourlySteps_merged2.csv")
+hourly_steps<- rbind(hourly_steps_merged_2, hourly_steps_merged) |> 
+  clean_names() 
+remove(hourly_steps_merged_2, hourly_steps_merged)
+write.csv(hourly_steps, "Hourly_Steps.csv")
+
+minute_steps_narrow_merged <- read.csv("data/minuteStepsNarrow_merged.csv")
+minute_steps_narrow_merged_2 <- read.csv("data/minuteStepsNarrow_merged2.csv") 
+minute_steps_narrow <- rbind(
+  minute_steps_narrow_merged_2, minute_steps_narrow_merged)|>
+  clean_names()
+
+remove(minute_steps_narrow_merged_2, minute_steps_narrow_merged)
+write.csv( minute_steps_narrow, "Minute_Steps_Narrow.csv")
+
+# Minute Steps Wide - only Apr-May
+minute_steps_Wide<- read.csv("data/minuteStepsWide_merged2.csv") |> 
+  clean_names()
+slice_head(minute_steps_Wide, n= 6)
+write.csv(minute_steps_Wide, "Minute_Steps_Wide.csv")
+```
+**Heart Rate Data**
+
+```{r Heart Rate File}
+# Heart Rate Seconds File
+heartrate_seconds_merged <- read.csv("data/heartrate_seconds_merged.csv")
+heartrate_seconds_merged_2 <- read.csv("data/heartrate_seconds_merged2.csv")
+heartrate_seconds<- rbind(
+  heartrate_seconds_merged_2, heartrate_seconds_merged) |> 
+  clean_names()
+
+str(heartrate_seconds)
+remove(heartrate_seconds_merged_2, heartrate_seconds_merged)
+write.csv(heartrate_seconds, "Heart_Rate_Seconds.csv")
+```
+
+** MET (Physical Effort) Data **
+
+```{r METs file}
+
+minute_mets_narrow_merged <- read.csv("data/minuteMETsNarrow_merged.csv")
+minute_mets_narrow_merged_2 <- read.csv("data/minuteMETsNarrow_merged2.csv")
+
+mets_data<- rbind(minute_mets_narrow_merged, minute_mets_narrow_merged_2) |> 
+  clean_names()|> 
+  mutate(record_date = as.Date(mdy_hms(activity_minute))) |> 
+  rename(measure = me_ts) |> 
+  select(id, measure, record_date,activity_minute)
+
+mets_data$record_time <- mdy_hms(mets_data$activity_minute)
+
+mets_data$record_hm <- as.POSIXct(mets_data$record_time,format = "%H:%M")
+
+summary (mets_data)
+write.csv(mets_data, "METS.csv")
+
+```
+
+**Sleep File**
+
+```{r Sleep Files}
+# Minute Sleep File
+minute_sleep_merged <- read.csv("data/minuteSleep_merged.csv")
+minute_sleep_merged_2 <- read.csv("data/minuteSleep_merged2.csv")
+minutes_sleep <- rbind(minute_sleep_merged, minute_sleep_merged_2)|> 
+  clean_names()|> 
+  str()
+remove(minute_sleep_merged, minute_sleep_merged_2)
+write.csv(minutes_sleep, "Minutes_Sleep.csv")
+
+# Day Sleep File
+sleep_day <- read.csv("data/sleepDay_merged2.csv") |> 
+  clean_names ()
+str(sleep_day)
+write.csv(sleep_day, "Sleep_Day.csv")
+```
+
+**Weight File**
+
+```{r Weight Files}
+# Weight Log File
+weight_log_info_merged <- read.csv("data/weightLogInfo_merged.csv")
+weight_log_info_merged_2 <- read.csv("data/weightLogInfo_merged2.csv")
+
+weight_data<- rbind(weight_log_info_merged, weight_log_info_merged_2)|> 
+  clean_names()
+str(weight_data)
+remove(weight_log_info_merged_2, weight_log_info_merged)
+colnames(weight_data)
+write.csv( weight_data, "Weight_Data.csv")
+```
+
+### Examine Further the Daily Activity File
+
+```{r Examine Daily Activity file}
+current_file <- daily_activity_merged
+colnames (current_file)
+
+slice_head(current_file, n=6)
+summary(current_file)
+
+```
+*Observations*
+The activity file contains data on what the wearer has been doing,
+number of steps, type of acitivity etcetera with 457 records over the
+two months. It includes calories.
+
+Questions that arise
+
+1.  Is this intake or some measure of calories used?
+2.  Are there any duplicates, that is any days when one user has two
+    measures recorded?
+
+## Summarise Daily Use of Various Measures
+
+```{r Summarise daily use}
+current_file |> # Current file is daily_activity_merged
+  summary()
+```
+
+There are 457 distinct records so there are no duplicate records.
+
+Do all users use the device the same number of times? 
+To answer this, show the usage in a pie chart for calories measures
+
+```{r Pie Chart}
+plot_data <- daily_calories |> 
+  group_by(id) |> 
+  mutate(days_used = n()) |> 
+  ungroup() |> 
+  group_by(days_used) |>
+  summarise(frequency = n(),
+              .groups = "drop")|> 
+    mutate(proportion = round(prop.table(frequency) * 100)) |> 
+  mutate(days.factor = factor(days_used))
+
+# Try the native R pie function
+pie(plot_data$frequency, 
+    labels = plot_data$days.factor,
+    clockwise = FALSE,
+    init.angle = 90,
+    main = "Days Used as Proportion of all Uses")
+```
+Clearly most users recorded number of calories on 31 days but this chart is not very appealing, so now use ggplot to create a bar chart of device use.
+
+```{r Daily Calories ggplot pie chart}
+# Create a pie using ggplot
+ggplot(plot_data)+
+  theme_bw()+
+      geom_bar(aes(x="", y = proportion, fill = days.factor), stat = "identity", color = "red")+
+  coord_polar("y", start = 0)+
+  theme(axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank())+
+  scale_fill_discrete(name = "Days Data Uploaded")+
+  labs(title = "Proportion of Users Days Use of Device")
+
+ggsave("pie_chart.png") # Save the pie chart as a graphic for future use
+```
+*Observations:* Data on calories was uploaded every day of the month nearly 70% of the
+time and on at least 18 days 96% of the users.
+
+```{r Daily Activities}
+str(daily_activity)
+unique(daily_activity$id)
+```
+*Observations:* There are 35 unique id's in the activities file
+
+```{r daily intensities}
+unique(daily_intensities$id)
+```
+*Observations:* There are 33 unique id's in the intensities file
+
+Do all the datasets have the same ID's? Compare pairs of datasets by
+finding how many id's are not in both datasets
+
+```{r Compare Dataset ids}
+# Compare the active iDs in the daily_intensities and daily_calories files
+# To make repeated comparisons, set up variables and use for different pairs
+# of dataframes.
+# First pair daily_intensities and daily_calories
+df1 <- daily_intensities
+df2 <- daily_calories
+
+df1_ids <-  df1 |> 
+  distinct(id)
+df2_ids = df2 |> 
+  distinct(id)
+anti_join(df1_ids, df2_ids)
+```
+*Observations:* All ID's match
+
+```{r Compare Dataset ids1}
+# Compare the active iDs in the daily_activity and daily_calories files  
+df1 <- daily_activity
+df2 <- daily_calories
+
+df1_ids <-  df1 |> 
+  distinct(id)
+df2_ids = df2 |> 
+  distinct(id)
+anti_join(df1_ids, df2_ids)
+```
+*Observations:* IDs 2891001357, 6391747486	are in daily activity but not daily calories
+
+```{r Compare Dataset ids2}
+df1 <- daily_activity
+df2 <- hourly_calories
+
+df1_ids <- df1 |> 
+  distinct(id)
+df2_ids <- df2 |> 
+  distinct(id)
+anti_join(df1_ids, df2_ids)
+```
+*Observations:* All ID's match
+
+```{r Compare Dataset ids3}
+df1 <- daily_activity
+df2 <- hourly_steps
+
+df1_ids <-  df1 |> 
+  distinct(id)
+df2_ids <-  df2 |> 
+  distinct(id)
+anti_join(df1_ids, df2_ids)
+```
+*Observations:* #All ID's match
+
+```{r Compare Dataset ids4}
+df1 <- daily_activity
+df2 <- hourly_steps
+
+df1_ids <-  df1 |> 
+  distinct(id)
+df2_ids <- df2 |> 
+  distinct(id)
+list_different<-anti_join(df1_ids, df2_ids)
+```
+*Observations:* The two files have the same set of user ids
+
+```{r Compare Dataset ids5}
+df1 <- daily_activity
+df2 <- minute_calories_wide
+  
+df1_ids <-  df1 |> 
+  distinct(id)
+df2_ids <-  df2 |> 
+  distinct(id)
+list_different<-anti_join(df1_ids, df2_ids)
+```
+*Observations:* 2891001357, 6391747486 appear in hourly steps merged but not hourly steps merged 2
+
+```{r Compare Dataset ids6}
+df1 <- daily_activity
+df2 <- weight_data
+
+df1_ids <-  df1 |> 
+  distinct(id)
+df2_ids <-  df2 |> 
+  distinct(id)
+list_different<-anti_join(df1_ids, df2_ids)
+```
+*Observations:* # There are 22 ids in daily_activity that are not in the weight_data.
+It follows that only 13 recorded any weight data, of those 8 recorded less than 3 times
+Only 5 users record weight data more than 2 times
+
+# Continue analysis of the data
+
+## Find how many days users made use of each type of record
+
+For each device dataset find a count of the number of days it is used
+
+```{r Activity data count}
+# Begin with the activities dataset as it has the most id's
+# Count the number of days activity data is uploaded
+devices_data <- daily_activity |> 
+  distinct(id, activity_date) |> 
+  group_by(id) |> 
+  summarise(activity_count = n(),
+              .groups = "drop")
+
+# Any plot of the data would be distorted by the wide range of values in the id column
+# Set up dataframe with index numbers to match the ID numbers
+
+# Set up a list of id's and a list of index numbers 1 - 35 for the 35 id numbers
+id_list <- c(devices_data$id)
+id_index <- c(seq(1,35))
+
+# Set up a dataframe to reference the id numbers to the corresponding index
+id_ref <- data.frame(id_list, id_index) |> 
+  rename(id = id_list)
+write.csv(id_ref, "ID_References.csv")
+
+# Add index numbers to devices data df
+devices_data <- devices_data |>
+  full_join(id_ref, by = join_by(id))|> 
+  relocate(id_index, .before = id)
+
+# Collect frequencies for calories measures and add to the dataframe
+# Use daily calories data to initialise devices_data dataframe
+calories_obs <- daily_calories |> # df of number of calories observations (obs)
+  distinct(id, activity_day) |> 
+  group_by(id) |> 
+  summarise(calories_count = n(),
+              .groups = "drop")
+
+devices_data <- devices_data |>
+  full_join(calories_obs, by = join_by(id))
+
+# Add sleep data to the devices_data dataframe in the same way
+sleep_obs <- sleep_day |> 
+  distinct(id, sleep_day) |> 
+  group_by(id) |> 
+  summarise(sleep_count = n(),
+              .groups = "drop")
+
+devices_data <- devices_data |>
+  full_join(sleep_obs, by = join_by(id))
+
+# Add intensities to the devices_data dataframe in the same way
+intensities_obs <- daily_intensities |> 
+  distinct(id, activity_day) |> 
+  group_by(id) |> 
+  summarise(intensities_count = n(),
+              .groups = "drop")
+
+devices_data <- devices_data |>
+  full_join(intensities_obs, by = join_by(id))
+
+# Add daily_steps to the devices_data dataframe in the same way
+
+steps_obs <- daily_steps|> 
+  distinct(id, step_total)|> 
+  group_by(id) |> 
+  summarise(step_count = n(),
+              .groups = "drop")
+
+devices_data <- devices_data |>
+  full_join(steps_obs, by = join_by(id))
+
+# Add weight_data to the devices_data dataframe in the same way
+
+weight_obs <- weight_data|> # df of number of weight observations (obs)
+  distinct(id, log_id)|> 
+  group_by(id) |> 
+  summarise(weight_count = n(),
+              .groups = "drop")
+
+devices_data <- devices_data |>
+  full_join(weight_obs, by = join_by(id))
+
+# Add mets_data to the devices_data dataframe in the same way
+
+mets_obs <- mets_data|> 
+  distinct(id, record_date)|> 
+  group_by(id) |> 
+  summarise(METs_count = n(),
+              .groups = "drop")
+
+devices_data <- devices_data |>
+  full_join(mets_obs, by = join_by(id))
+
+```
+
+## Plot the data for totals for each measure
+
+```{r Plot the data for totals for each measure}
+ggplot(devices_data, aes(id_index, activity_count))+
+  geom_point(aes(id_index, activity_count),
+             color= "blue",
+            fill="blue")+
+  geom_line(color ="blue")+
+  geom_point(aes(id_index, calories_count),
+             color = "red")+
+  geom_line(aes(id_index, calories_count),
+            color= "red")+
+  geom_point(aes(id_index, sleep_count),
+             color = "purple")+
+  geom_line(aes(id_index, sleep_count),
+            color= "purple")+
+    geom_point(aes(id_index, intensities_count),
+             color = "green")+
+  geom_line(aes(id_index, intensities_count),
+            color= "green")+
+  labs(title = "Days Device Used",
+     x = "User Number",
+     y = "Number of Days Used")+
+    scale_x_continuous(breaks = seq(0, 35, by = 2))+
+      scale_y_continuous(breaks = seq(0, 70, by = 10))
+  
+```
+
+Layering several facets has not worked, only three appear on the chart
+
+### Experiment with geom_smooth
+
+```{r Try density plot}
+ggplot(devices_data, aes(id_index, activity_count))+
+  geom_smooth(aes(id_index, activity_count),
+             color= "blue",
+            linetype = 1)+
+  geom_point()+
+    labs(title = "Experiment with Geom Smooth for Activiies Observations",
+         x = "User",
+         y = "Number of Times Device Used")+
+   scale_y_continuous(expand = c(0,0),breaks = seq(0, 65, by = 10), limits = c(0, 65))+
+  scale_x_continuous(breaks = seq(0, 35, by = 5))
+```
+
+This does give an idea of the usage but is not very useful However, it
+is clear that one user records activity more than 60 times which is 10
+more than any other user. Two users (index 11 and 25) hardly use the
+device at all.
+
+## Pivot the data to use devices as facets
+
+```{r Pivot data to use devices as facets}
+# Transpose the df to find which user has which entries
+# Rename counts for each device to the device name
+
+devices_data <- devices_data |>
+  rename(Activity = activity_count,
+         Calories = calories_count,
+         Sleep = sleep_count,
+         Intensities = intensities_count,
+         Steps = step_count,
+         METs = METs_count,
+         Weight = weight_count
+         )
+```
+
+### Pivot the data
+
+Pivot the data to produce a graph with each device as a facet
+
+```{r Pivot data}
+devices_long <- devices_data |>
+  select(!id) |> 
+  pivot_longer(
+  cols = !c(id_index),
+  names_to = "device",
+  values_to = "times_used")
+write.csv(devices_long, "device_usage.csv")
+```
+
+### Chart the pivoted data
+
+```{r Test plot of pivoted data}
+# Test plot
+write.csv(devices_long, "Devices Long.csv")
+devices_long |> 
+  filter(device != "Intensities")|> #Intensities match Calories
+ggplot(aes(x = id_index, y = times_used, fill = device, color = device))+
+  geom_line(
+    linewidth = 0.8,
+    alpha = 0.9)+
+  labs(title = "Days Device Used",
+     x = "User Number",
+     y = "Number of Days Used")+
+#   scale_x_continuous(breaks = seq(0, 36, by = 5))+
+#    scale_y_continuous(breaks = seq(0, 70, by = 10))+
+  facet_wrap(vars(device))
+
+```
+
+Very little use is made of the weight measure which seems to need to be
+input manually.
+
+```{r Chart the data as points }
+# Chart the data plotting points
+devices_long |> 
+   filter(device != "Intensities")|> #Intensities match Calories
+ggplot(aes(x = id_index, y = times_used))+
+  geom_point(aes(shape = device,
+             color = device))+
+  labs(title = "Days Device Used",
+     x = "User Number",
+     y = "Number of Days Used")+
+  theme(legend.position = "bottom")+
+  labs(color = "Device",
+       shape = "Device")+
+    scale_x_continuous(breaks = seq(0, 36, by = 5))+
+    scale_y_continuous(breaks = seq(0, 70, by = 10))
+
+```
+
+# Compare Device Usage in a Bar Chart
+
+```{r try Bar Chart}
+devices_long  |>  
+  na.omit() |> 
+ggplot(aes(x= device, y= times_used, fill = device, color = device))+
+  geom_col()+
+  labs(color = "Device",
+       fill = "Device")
+  
+devices_clean <- na.omit(devices_long)
+
+missed_items <- anti_join( devices_long, devices_clean)
+devices_long
+list <- missed_items |> 
+  filter(device == "sleep")
+list
+
+devices_clean |> 
+ggplot(aes(x= device, y= times_used, fill = device, color = device))+
+  geom_col()+
+  labs(color = "Device",
+       fill = "Device")
+ggsave("devices_barchat.png")
+
+```
+
+All the missed items were N/A for sleep (10) or weight (22)
+
+# Show Device Usage side by side
+
+```{r Bar Chart side by side}
+devices_long |>
+  filter(device == "Activity"|
+           device == "Sleep"|
+           device == "Steps"|
+           device == "Weight")|>
+  na.omit() |> 
+ggplot(aes(x= id_index, y= times_used, fill = device, color = device))+
+  geom_col(position = "fill")+
+  labs( x = "Users",
+        y = "Number of Uses")+
+  scale_x_continuous(breaks = seq(0, 35, by = 5))+
+  labs(color = "Device",
+       fill = "Device",
+       title = "Proportion of Device Use for Each User")
+
+ggsave("barchart_fill.png")  # Save the bar chart
+# List the records where sleep data is not recorded
+devices_clean <- na.omit(devices_long)
+missed_items <- anti_join( devices_long, devices_clean)
+list <- missed_items |> 
+  filter(device == "sleep")
+list
+# No records were missed
+```
+
+# Summary
+
+There appears to be a discrepancy in the number of users reported by the
+provider and the records in the data files. Perhaps there is an error in
+one of the User IDs. More detailed explanation of what each measure in
+the data files would be helpful.
+
+Not all of the features were used every day by all the users. What is
+clear is that little use is made of the weight recording feature (only 8
+users made any use of this feature). Other measures were used
+extensively, even it seems without thinking, indicating the ease of use
+of these features.
+
+# Recommendations
+
+-   In marketing of the products, ease of use should be a feature to
+    strongly promote.
+
+-   The limited use of the weight feature could be an area to develop
+    with an emphasis on the health benefits of managing your weight.
+    What stands in the way is the necessity to input weights manually.
+    Therefore, developing integration with scales so that all the user
+    has to do is have the fitness device on and then step on the scales
+    for an automatic reading.
